@@ -29,11 +29,16 @@ if (-not (Test-Path $ghExe)) {
     Remove-Item -Path $extractDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-# 3. 提交本地所有最新改動
+# 3. 設定 Git 作者資訊並提交本地所有最新改動
+git config user.email "16270@s.tmu.edu.tw"
+git config user.name "16270"
+git config --global user.email "16270@s.tmu.edu.tw"
+git config --global user.name "16270"
+
 git add -A
 $status = git status --porcelain
 if ($status) {
-    git commit -m "Update: 雙和醫院智能問答助手最新代碼"
+    git commit -m "Update: 雙和醫院智能問答助手最新代碼 (16270@s.tmu.edu.tw)"
     Write-Host "✅ 本地代碼已完成 Git Commit 封裝！" -ForegroundColor Green
 } else {
     Write-Host "✅ 本地代碼已是最新提交狀態！" -ForegroundColor Green
@@ -57,9 +62,10 @@ if (-not $isLoggedIn) {
     Write-Host ""
     Write-Host "========================================================" -ForegroundColor Yellow
     Write-Host "  ⚠️ 尚未登入 GitHub 帳號" -ForegroundColor Yellow
+    Write-Host "  請在彈出的瀏覽器視窗中登入您的帳號：16270@s.tmu.edu.tw" -ForegroundColor Cyan
     Write-Host "========================================================" -ForegroundColor Yellow
-    Write-Host "  即將為您開啟 GitHub 網頁授權登入..." -ForegroundColor Cyan
-    Write-Host "  登入完成後，系統將自動建立並上傳至 E620-Website 專案！" -ForegroundColor White
+    Write-Host "  即將為您開啟 GitHub 網頁授權..." -ForegroundColor Yellow
+    Write-Host "  登入授權完成後，系統將自動建立並上傳至 E620-Website 專案！" -ForegroundColor White
     Write-Host ""
     
     & $ghExe auth login --web -p https -h github.com
