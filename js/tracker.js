@@ -117,7 +117,13 @@ const Tracker = {
     // 2. Firebase REST API
     if (!_isValidDbUrl()) return;
 
-    const key = _encodeKey(trimmed);
+    // 🌟 關鍵優化：命中解答時，統一以「題庫標準問題名稱」作為累計 Key！
+    // 這樣不同病人問同一件事（例如「想請假」、「可以外出嗎」），都會合併計入「請問住院期間可以請假外出嗎？」
+    const targetQuestionTitle = (matched && matchedItem && matchedItem.question) 
+      ? matchedItem.question.trim() 
+      : trimmed;
+
+    const key = _encodeKey(targetQuestionTitle);
     const itemUrl = `${_getBaseUrl()}/questions/${encodeURIComponent(key)}.json`;
 
     try {
@@ -129,7 +135,8 @@ const Tracker = {
       }
 
       const updated = {
-        question: trimmed,
+        question: targetQuestionTitle,
+        category: matchedItem ? (matchedItem.category || "") : "",
         count: ((current && current.count) || 0) + 1,
         matched: ((current && current.matched) || 0) + (matched ? 1 : 0),
         unmatched: ((current && current.unmatched) || 0) + (matched ? 0 : 1),
