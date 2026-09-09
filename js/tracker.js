@@ -14,7 +14,7 @@
 //  例如: "https://e620-qa-tracker-default-rtdb.asia-southeast1.firebasedatabase.app"
 // ============================================================
 const FIREBASE_CONFIG = {
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com" // 請填入您的 Realtime Database 網址
+  databaseURL: "https://e620-qa-tracker-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
 // ============================================================
