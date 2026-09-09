@@ -1,32 +1,26 @@
 /**
- * 📊 智能問答助手 - 訪問與問題統計追蹤模組
- * 方案 C：Google Analytics 4 + Firebase Realtime Database
+ * 📊 智能問答助手 - 訪問與問題統計追蹤模組 (REST API 輕量高併發版)
+ * 方案 C：Google Analytics 4 + Firebase Realtime Database (REST API)
  *
- * 功能：
- * 1. recordVisit()      - 記錄每次訪問（時間、裝置類型）
- * 2. recordQuestion()   - 記錄每次提問並累計件數
- * 3. getQuestionStats() - 讀取問題統計供後台顯示
+ * 特色：
+ * 1. 突破 Firebase Spark 免費版 100 人長連線限制（改用 HTTP REST API，請求完即斷開，不佔連線數）。
+ * 2. 免載入肥大的 Firebase SDK，提升網頁加載速度與省電。
+ * 3. 完美支援 GA4 雙軌追蹤。
  */
 
 // ============================================================
-//  ⚙️ Firebase 設定（請填入您的 Firebase 專案設定）
-//  建立方式：https://console.firebase.google.com/
+//  ⚙️ Firebase 設定
+//  建立 Realtime Database 後，將資料庫網址貼在 databaseURL 即可！
+//  例如: "https://e620-qa-tracker-default-rtdb.asia-southeast1.firebasedatabase.app"
 // ============================================================
 const FIREBASE_CONFIG = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT.firebaseapp.com",
-  databaseURL:       "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com" // 請填入您的 Realtime Database 網址
 };
 
 // ============================================================
 //  ⚙️ Google Analytics 4 設定
-//  取得方式：https://analytics.google.com/ → 管理 → 資料串流
 // ============================================================
-const GA4_MEASUREMENT_ID = "G-XXXXXXXXXX"; // 請替換為您的衡量 ID
+const GA4_MEASUREMENT_ID = "G-XXXXXXXXXX";
 
 // ============================================================
 //  內部工具函式
@@ -36,7 +30,7 @@ const GA4_MEASUREMENT_ID = "G-XXXXXXXXXX"; // 請替換為您的衡量 ID
 function _encodeKey(str) {
   return (str || "")
     .replace(/[.#$[\]/]/g, "_")
-    .substring(0, 120) // Firebase key 最長 768B，中文安全截 120 字
+    .substring(0, 100)
     .trim() || "unknown";
 }
 
@@ -54,168 +48,147 @@ function _gtag(...args) {
   }
 }
 
-// ============================================================
-//  Firebase 初始化（Compat SDK，從 CDN 載入）
-// ============================================================
-let _db = null; // Firebase Database 實例
+/** 檢查是否已設定有效的 Firebase URL */
+function _isValidDbUrl() {
+  return FIREBASE_CONFIG.databaseURL && 
+         !FIREBASE_CONFIG.databaseURL.includes("YOUR_PROJECT") &&
+         FIREBASE_CONFIG.databaseURL.startsWith("https://");
+}
 
-function _initFirebase() {
-  if (_db) return Promise.resolve(_db);
-
-  return new Promise((resolve) => {
-    // 等待 Firebase SDK 載入
-    const check = () => {
-      if (window.firebase && window.firebase.database) {
-        try {
-          // 避免重複初始化
-          if (!window.firebase.apps || window.firebase.apps.length === 0) {
-            window.firebase.initializeApp(FIREBASE_CONFIG);
-          }
-          _db = window.firebase.database();
-          resolve(_db);
-        } catch (e) {
-          console.warn("[Tracker] Firebase 初始化失敗:", e.message);
-          resolve(null);
-        }
-      } else {
-        setTimeout(check, 300);
-      }
-    };
-    check();
-  });
+/** 格式化 Firebase URL 去除末尾斜線 */
+function _getBaseUrl() {
+  return FIREBASE_CONFIG.databaseURL.replace(/\/+$/, "");
 }
 
 // ============================================================
-//  公開 API
+//  公開 API (REST API 實作)
 // ============================================================
 
 const Tracker = {
 
   /**
    * 記錄訪問事件
-   * 在 Firebase: /visits/{pushId} = { time, device }
-   * 在 GA4: event "page_visit"
+   * 透過 POST 請求寫入 /visits.json
    */
   async recordVisit() {
-    // GA4 訪問（pageview 會自動記錄，此處額外送裝置類型）
-    _gtag("event", "visit", {
+    // 1. GA4 訪問事件
+    _gtag("event", "page_visit", {
       device_type: _detectDevice(),
-      page_title:  "智能問答助手"
+      page_title: document.title || "智能問答助手"
     });
 
-    // Firebase
-    const db = await _initFirebase();
-    if (!db) return;
+    // 2. Firebase REST API
+    if (!_isValidDbUrl()) return;
 
     try {
-      await db.ref("visits").push({
-        time:   new Date().toISOString(),
+      const payload = {
+        time: new Date().toISOString(),
         device: _detectDevice(),
-        ua:     navigator.userAgent.substring(0, 200)
-      });
+        ua: navigator.userAgent.substring(0, 150)
+      };
+
+      // 使用 fetch POST，自動產生唯一的 push ID，連線在瞬間完成釋放
+      fetch(`${_getBaseUrl()}/visits.json`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }).catch(err => console.warn("[Tracker] recordVisit fetch error:", err));
     } catch (e) {
-      console.warn("[Tracker] recordVisit 寫入失敗:", e.message);
+      console.warn("[Tracker] recordVisit exception:", e.message);
     }
   },
 
   /**
-   * 記錄提問事件
-   * @param {string}  query      - 使用者輸入的問題
-   * @param {boolean} matched    - 是否命中知識庫
-   * @param {object}  matchedItem - 命中的知識庫條目（可選）
-   *
-   * 在 Firebase: /questions/{encodedQuery}/count++
-   * 在 GA4: event "question_asked"
+   * 記錄提問事件並累計件數
+   * 先讀取目前的計數，再寫回（REST API 輕量更新）
    */
   async recordQuestion(query, matched, matchedItem = null) {
     if (!query || !query.trim()) return;
-
     const trimmed = query.trim();
 
-    // GA4 事件
+    // 1. GA4 提問事件
     _gtag("event", "question_asked", {
-      question_text:     trimmed.substring(0, 100),
-      matched:           matched ? "yes" : "no",
-      matched_category:  matchedItem ? (matchedItem.category || "") : "",
-      matched_question:  matchedItem ? (matchedItem.question  || "").substring(0, 100) : ""
+      question_text: trimmed.substring(0, 100),
+      matched: matched ? "yes" : "no",
+      matched_category: matchedItem ? (matchedItem.category || "") : "",
+      matched_question: matchedItem ? (matchedItem.question || "").substring(0, 100) : ""
     });
 
-    // Firebase：對問題計數 +1（使用 transaction 確保並發安全）
-    const db = await _initFirebase();
-    if (!db) return;
+    // 2. Firebase REST API
+    if (!_isValidDbUrl()) return;
 
     const key = _encodeKey(trimmed);
-    const ref = db.ref(`questions/${key}`);
+    const itemUrl = `${_getBaseUrl()}/questions/${encodeURIComponent(key)}.json`;
 
     try {
-      await ref.transaction((current) => {
-        if (current === null) {
-          // 第一次被問到
-          return {
-            question:  trimmed,
-            count:     1,
-            matched:   matched ? 1 : 0,
-            unmatched: matched ? 0 : 1,
-            lastAsked: new Date().toISOString()
-          };
-        } else {
-          // 累加
-          return {
-            ...current,
-            count:     (current.count || 0) + 1,
-            matched:   (current.matched   || 0) + (matched ? 1 : 0),
-            unmatched: (current.unmatched || 0) + (matched ? 0 : 1),
-            lastAsked: new Date().toISOString()
-          };
-        }
-      });
+      // 讀取當前紀錄
+      const res = await fetch(itemUrl);
+      let current = null;
+      if (res.ok) {
+        current = await res.json();
+      }
+
+      const updated = {
+        question: trimmed,
+        count: ((current && current.count) || 0) + 1,
+        matched: ((current && current.matched) || 0) + (matched ? 1 : 0),
+        unmatched: ((current && current.unmatched) || 0) + (matched ? 0 : 1),
+        lastAsked: new Date().toISOString()
+      };
+
+      // 用 PUT 覆蓋更新此題的累計數
+      fetch(itemUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated)
+      }).catch(err => console.warn("[Tracker] recordQuestion update error:", err));
     } catch (e) {
-      console.warn("[Tracker] recordQuestion 寫入失敗:", e.message);
+      console.warn("[Tracker] recordQuestion exception:", e.message);
     }
   },
 
   /**
    * 讀取問題統計（供後台管理頁顯示）
-   * @returns {Promise<Array>} 依問題提問次數排序的陣列
    */
   async getQuestionStats() {
-    const db = await _initFirebase();
-    if (!db) return [];
+    if (!_isValidDbUrl()) return [];
 
     try {
-      const snap = await db.ref("questions")
-        .orderByChild("count")
-        .limitToLast(100)
-        .once("value");
+      const res = await fetch(`${_getBaseUrl()}/questions.json`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!data) return [];
 
-      const result = [];
-      snap.forEach((child) => {
-        result.push({ key: child.key, ...child.val() });
-      });
+      const result = Object.keys(data).map(k => ({
+        key: k,
+        ...data[k]
+      }));
 
       // 依 count 降序排列
       return result.sort((a, b) => (b.count || 0) - (a.count || 0));
     } catch (e) {
-      console.warn("[Tracker] getQuestionStats 讀取失敗:", e.message);
+      console.warn("[Tracker] getQuestionStats failed:", e.message);
       return [];
     }
   },
 
   /**
    * 讀取訪問統計摘要
-   * @returns {Promise<{total, today, mobile, desktop}>}
    */
   async getVisitStats() {
-    const db = await _initFirebase();
-    if (!db) return { total: 0, today: 0, mobile: 0, desktop: 0 };
+    if (!_isValidDbUrl()) return { total: 0, today: 0, mobile: 0, desktop: 0 };
 
     try {
-      const snap = await db.ref("visits").once("value");
-      const today = new Date().toISOString().substring(0, 10); // YYYY-MM-DD
+      const res = await fetch(`${_getBaseUrl()}/visits.json`);
+      if (!res.ok) return { total: 0, today: 0, mobile: 0, desktop: 0 };
+      const data = await res.json();
+      if (!data) return { total: 0, today: 0, mobile: 0, desktop: 0 };
+
+      const today = new Date().toISOString().substring(0, 10);
       let total = 0, todayCount = 0, mobile = 0, desktop = 0;
 
-      snap.forEach((child) => {
-        const v = child.val();
+      Object.values(data).forEach(v => {
+        if (!v) return;
         total++;
         if ((v.time || "").startsWith(today)) todayCount++;
         if (v.device === "mobile") mobile++;
@@ -224,7 +197,7 @@ const Tracker = {
 
       return { total, today: todayCount, mobile, desktop };
     } catch (e) {
-      console.warn("[Tracker] getVisitStats 讀取失敗:", e.message);
+      console.warn("[Tracker] getVisitStats failed:", e.message);
       return { total: 0, today: 0, mobile: 0, desktop: 0 };
     }
   }

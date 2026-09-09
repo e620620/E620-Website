@@ -501,11 +501,7 @@
     </div>
   </div>
 
-  <!-- 載入腳本 (優先載入 database/ 資料夾內的資料庫) -->
-  <!-- Firebase Compat SDK (Realtime Database) -->
-  <!-- ⚠️ 設定 Firebase 後此 SDK 即生效，未設定時 tracker.js 會優雅降級不影響使用 -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <!-- 載入統計追蹤模組 (REST API 高併發輕量版，免載入肥大 SDK) -->
   <script src="js/tracker.js"></script>
   <script src="database/databases.js"></script>
   <script src="js/admin.js"></script>
