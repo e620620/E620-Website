@@ -110,13 +110,13 @@
           <button id="btn-close-admin" class="admin-close-btn">✕ 關閉返回</button>
         </div>
 
-        <!-- 導覽分頁按鈕列 (置頂固定，支援橫向滑動) -->
-        <div class="admin-tabs" style="display:flex !important; background:#ffffff !important; border-bottom:2px solid #026873 !important; padding:8px 10px !important; gap:6px !important; overflow-x:auto !important; white-space:nowrap !important; flex-shrink:0 !important; z-index:100 !important;">
-          <button class="admin-tab-btn" data-tab="db" style="background:#f0f6f7; color:#333; border:1px solid #c0d6d8; border-radius:20px; padding:6px 12px; font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0;">🗄️ 資料庫管理</button>
-          <button class="admin-tab-btn active" data-tab="kb" style="background:#026873; color:#fff; border:1px solid #026873; border-radius:20px; padding:6px 12px; font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0;">📚 內容維護</button>
-          <button class="admin-tab-btn" data-tab="tags" style="background:#f0f6f7; color:#333; border:1px solid #c0d6d8; border-radius:20px; padding:6px 12px; font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0;">🏷️ 標籤庫</button>
-          <button class="admin-tab-btn" data-tab="stats" style="background:#fef7e0; color:#b06000; border:1.5px solid #d97706; border-radius:20px; padding:6px 12px; font-size:13px; font-weight:800; cursor:pointer; flex-shrink:0;">📈 統計效能 👈</button>
-          <button class="admin-tab-btn" data-tab="security" style="background:#f0f6f7; color:#333; border:1px solid #c0d6d8; border-radius:20px; padding:6px 12px; font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0;">🔒 安全密碼</button>
+        <!-- 導覽分頁按鈕列 (換行整齊排列，100% 全部呈現，完全免滑動) -->
+        <div class="admin-tabs" style="display:flex !important; flex-wrap:wrap !important; background:#ffffff !important; border-bottom:2px solid #026873 !important; padding:8px 8px !important; gap:5px !important; flex-shrink:0 !important; z-index:100 !important; justify-content:space-between !important;">
+          <button class="admin-tab-btn" data-tab="db" style="flex:1 1 28%; background:#f0f6f7; color:#333; border:1px solid #c0d6d8; border-radius:8px; padding:6px 4px; font-size:12px; font-weight:700; cursor:pointer; text-align:center;">🗄️ 資料庫</button>
+          <button class="admin-tab-btn active" data-tab="kb" style="flex:1 1 28%; background:#026873; color:#fff; border:1px solid #026873; border-radius:8px; padding:6px 4px; font-size:12px; font-weight:700; cursor:pointer; text-align:center;">📚 內容維護</button>
+          <button class="admin-tab-btn" data-tab="tags" style="flex:1 1 28%; background:#f0f6f7; color:#333; border:1px solid #c0d6d8; border-radius:8px; padding:6px 4px; font-size:12px; font-weight:700; cursor:pointer; text-align:center;">🏷️ 標籤庫</button>
+          <button class="admin-tab-btn" data-tab="stats" style="flex:1 1 45%; background:#fef7e0; color:#b06000; border:2px solid #d97706; border-radius:8px; padding:8px 6px; font-size:13px; font-weight:800; cursor:pointer; text-align:center; box-shadow:0 2px 5px rgba(217,119,6,0.2);">📊 統計效能 (必看)</button>
+          <button class="admin-tab-btn" data-tab="security" style="flex:1 1 45%; background:#f0f6f7; color:#333; border:1px solid #c0d6d8; border-radius:8px; padding:8px 6px; font-size:13px; font-weight:700; cursor:pointer; text-align:center;">🔒 安全密碼</button>
         </div>
 
         <div class="admin-body">
