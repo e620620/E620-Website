@@ -1,0 +1,998 @@
+/* ==========================================================================
+   智能問答助手 (Intelligent Q&A Assistant)
+   多資料庫管理版 (Multi-Database & Direct Content Editor)
+   ========================================================================== */
+
+:root {
+  --primary-teal: #026873;
+  --primary-teal-light: #037d8b;
+  --primary-teal-dark: #014d55;
+  --header-bg: #026873;
+  --header-btn-bg: #4f939c;
+  --text-dark: #16363a;
+  --text-muted: #436166;
+  --text-light: #738e93;
+  
+  --category-card-bg: #f0f7fb;
+  --category-card-border: #dbe8f2;
+  --category-card-text: #19538c;
+  
+  --border-color: #e2eded;
+  --font-family: 'DM Sans', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ================= 全螢幕背景（鎖定無滾動） ================= */
+html, body {
+  width: 100%;
+  height: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  font-family: var(--font-family);
+  background: radial-gradient(circle at center, #d8ecec 0%, #bad4d6 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px;
+}
+
+/* ================= 📱 擬真手機外框 ================= */
+.phone-frame {
+  width: 100%;
+  max-width: 395px;
+  height: 820px;
+  max-height: 96vh;
+  max-height: 96dvh;
+  background: #0f172a;
+  border-radius: 50px;
+  padding: 11px;
+  box-shadow: 
+    0 25px 60px rgba(2, 60, 68, 0.4),
+    0 10px 25px rgba(0, 0, 0, 0.25),
+    inset 0 0 4px 2px rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* 動態島 */
+.phone-island {
+  position: absolute;
+  top: 19px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 22px;
+  background: #000000;
+  border-radius: 20px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.phone-island::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #111e2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ================= 手機螢幕內部容器 ================= */
+.phone-screen {
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+  border-radius: 40px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 手機狀態列 */
+.phone-status-bar {
+  background: var(--header-bg);
+  height: 36px;
+  padding: 8px 24px 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  z-index: 50;
+  user-select: none;
+}
+
+.status-bar-icons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+/* ================= 頂部 Header ================= */
+.app-header {
+  background: var(--header-bg);
+  color: #ffffff;
+  padding: 6px 16px 14px 16px;
+  flex-shrink: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.header-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-branding {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mascot-icon {
+  width: 32px;
+  height: 32px;
+  background: #ffffff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.header-branding h1 {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.3px;
+}
+
+.header-subtitle {
+  font-size: 12px;
+  color: #e1f3f5;
+  line-height: 1.4;
+}
+
+/* 📱 手機掃碼按鈕 */
+.header-qrcode-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+  border-radius: 14px;
+  padding: 3px 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition);
+}
+
+.header-qrcode-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+/* 隱蔽管理員按鈕 */
+.admin-stealth-btn {
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: var(--transition);
+}
+
+.admin-stealth-btn:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.35);
+  transform: scale(1.05);
+}
+
+/* 🔥 熱門常見諮詢區塊 */
+.hot-queries-box {
+  background: #f4fafb;
+  border: 1px solid #dcefed;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.hot-queries-title {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--primary-teal);
+  margin-bottom: 6px;
+}
+
+.hot-queries-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.hot-chip-btn {
+  background: #ffffff;
+  border: 1px solid #cce5e8;
+  color: var(--text-dark);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: inherit;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.hot-chip-btn:hover {
+  background: var(--primary-teal);
+  color: #ffffff;
+  border-color: var(--primary-teal);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(2, 104, 115, 0.2);
+}
+
+/* 電話撥打專用連結 */
+.chat-tel-link {
+  color: #026873;
+  background: #e6f6f7;
+  padding: 1px 7px;
+  border-radius: 4px;
+  text-decoration: underline;
+  font-weight: 700;
+  display: inline-block;
+  margin: 1px 0;
+  transition: var(--transition);
+}
+
+.chat-tel-link:hover {
+  background: #026873;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+/* 資料庫下拉清單 */
+.header-db-dropdown {
+  position: absolute;
+  top: 32px;
+  left: 0;
+  background: #ffffff;
+  color: var(--text-dark);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  width: 230px;
+  padding: 6px;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 150;
+  border: 1px solid var(--border-color);
+  animation: fadeIn 0.15s ease-out;
+}
+
+.header-db-dropdown.show {
+  display: flex;
+}
+
+.dropdown-header-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-light);
+  padding: 4px 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.dropdown-db-item {
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: var(--transition);
+}
+
+.dropdown-db-item:hover {
+  background: #f0f7fb;
+  color: var(--primary-teal);
+}
+
+.dropdown-db-item.active {
+  background: #eef8f8;
+  color: var(--primary-teal);
+  font-weight: 800;
+}
+
+.dropdown-footer-action {
+  padding: 8px 10px;
+  border-top: 1px solid #f0f0f0;
+  margin-top: 2px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--primary-teal);
+  cursor: pointer;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.dropdown-footer-action:hover {
+  background: #f4fafb;
+}
+
+/* ⚙ 後台管理按鈕 */
+.admin-badge-btn {
+  background: var(--header-btn-bg);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.admin-badge-btn:hover {
+  background: #62a5ae;
+}
+
+/* ================= 聊天主要視窗 ================= */
+.chat-window {
+  flex: 1;
+  background: #fdfdfd;
+  padding: 14px 14px 18px 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scroll-behavior: smooth;
+  position: relative;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chat-window::-webkit-scrollbar {
+  width: 5px;
+}
+.chat-window::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-window::-webkit-scrollbar-thumb {
+  background: #cfdcde;
+  border-radius: 3px;
+}
+
+.chat-message-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chat-message-row.user {
+  flex-direction: row-reverse;
+}
+
+.bot-avatar-badge {
+  width: 30px;
+  height: 30px;
+  background: var(--primary-teal);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.user-avatar-badge {
+  width: 30px;
+  height: 30px;
+  background: #e3edf7;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.assistant-card-body {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 16px 14px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.03);
+  flex: 1;
+  word-break: break-word;
+}
+
+.user-message-bubble {
+  background: var(--primary-teal);
+  color: #ffffff;
+  border-radius: 14px 14px 2px 14px;
+  padding: 9px 13px;
+  font-size: 14px;
+  font-weight: 500;
+  max-width: 82%;
+  box-shadow: 0 2px 6px rgba(2, 104, 115, 0.2);
+}
+
+.welcome-main-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-dark);
+  line-height: 1.35;
+  margin-bottom: 6px;
+}
+
+.welcome-desc-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin-bottom: 12px;
+}
+
+.category-select-heading {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 10px;
+}
+
+/* ================= 縱向分類手風琴卡片 ================= */
+.categories-accordion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.category-dropdown-card {
+  background: var(--category-card-bg);
+  border: 1px solid var(--category-card-border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: var(--transition);
+}
+
+.category-dropdown-card:hover {
+  background: #e7f2fa;
+}
+
+.category-dropdown-header {
+  padding: 11px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.category-title-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--category-card-text);
+}
+
+.folder-icon {
+  font-size: 16px;
+  color: #19538c;
+}
+
+.dropdown-triangle {
+  font-size: 11px;
+  color: var(--category-card-text);
+  transition: transform 0.2s ease;
+}
+
+.category-dropdown-card.open .dropdown-triangle {
+  transform: rotate(180deg);
+}
+
+.category-dropdown-content {
+  display: none;
+  padding: 6px 10px 10px 10px;
+  background: #ffffff;
+  border-top: 1px solid #e6f0f7;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.category-dropdown-card.open .category-dropdown-content {
+  display: flex;
+}
+
+.accordion-q-btn {
+  background: #f8fbfa;
+  border: 1px solid #e2ecec;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-dark);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.accordion-q-btn:hover {
+  background: #eef8f8;
+  border-color: var(--primary-teal);
+  color: var(--primary-teal);
+}
+
+/* ================= 浮動回到頂部按鈕 ================= */
+.floating-scroll-top-btn {
+  position: absolute;
+  bottom: 74px;
+  right: 14px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--primary-teal);
+  color: #ffffff;
+  border: none;
+  font-size: 18px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(2, 104, 115, 0.4);
+  z-index: 50;
+  transition: var(--transition);
+}
+
+.floating-scroll-top-btn:hover {
+  background: var(--primary-teal-light);
+  transform: translateY(-2px);
+}
+
+/* ================= 底部固定輸入列 ================= */
+.chat-input-bar {
+  background: #ffffff;
+  border-top: 1px solid #e1eded;
+  padding: 10px 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.chat-input-field {
+  flex: 1;
+  border: 1px solid #d2dedf;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text-dark);
+  outline: none;
+  background: #ffffff;
+}
+
+.chat-input-field::placeholder {
+  color: #92a4a7;
+}
+
+.chat-input-field:focus {
+  border-color: var(--primary-teal);
+}
+
+.chat-send-btn {
+  background: var(--primary-teal);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 6px rgba(2, 104, 115, 0.25);
+  white-space: nowrap;
+}
+
+.chat-send-btn:hover {
+  background: var(--primary-teal-light);
+}
+
+/* ================= 機器人問答回覆樣式 ================= */
+.answer-text {
+  white-space: pre-line;
+  font-size: 14px;
+  color: var(--text-dark);
+  line-height: 1.55;
+  margin-bottom: 8px;
+  word-break: break-word;
+}
+
+/* 自動超連結樣式 (點擊開啟網頁) */
+.chat-auto-link {
+  color: #19538c;
+  background: #edf5fb;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-decoration: underline;
+  text-decoration-color: rgba(25, 83, 140, 0.4);
+  text-underline-offset: 2px;
+  font-weight: 600;
+  display: inline;
+  word-break: break-all;
+  transition: var(--transition);
+}
+
+.chat-auto-link:hover {
+  background: #19538c;
+  color: #ffffff;
+  text-decoration: none;
+  box-shadow: 0 1px 4px rgba(25, 83, 140, 0.25);
+}
+
+.answer-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  padding-top: 6px;
+  border-top: 1px dashed #dce7e8;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.chip {
+  background: #eaf4f5;
+  color: var(--primary-teal);
+  padding: 1px 7px;
+  border-radius: 9999px;
+  font-weight: 700;
+}
+
+.chip-confidence {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.chip-tag {
+  background: #edf5fb;
+  color: #19538c;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.chip-tag:hover {
+  background: #19538c;
+  color: #ffffff;
+}
+
+.suggestions-box {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.suggestions-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--primary-teal);
+}
+
+.suggest-btn {
+  background: #f4fafb;
+  border: 1px solid #cfe2e4;
+  color: var(--primary-teal);
+  font-size: 12.5px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.suggest-btn:hover {
+  background: #e8f5f6;
+}
+
+/* ================= ⚙ 後台管理抽屜與資料庫管理卡片 ================= */
+.admin-modal-view {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #ffffff;
+  z-index: 200;
+  display: none;
+  flex-direction: column;
+  animation: slideUp 0.22s ease-out;
+  overflow: hidden;
+  border-radius: 40px;
+}
+
+.admin-modal-view.active {
+  display: flex;
+}
+
+.admin-header {
+  background: var(--header-bg);
+  color: #ffffff;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.admin-header h2 {
+  font-size: 16px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.admin-close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 4px;
+  overflow-x: auto;
+}
+
+.admin-tab-btn {
+  background: transparent;
+  border: none;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.admin-tab-btn.active {
+  background: var(--primary-teal);
+  color: #ffffff;
+}
+
+/* 資料庫管理卡片 */
+.db-manage-card {
+  background: #ffffff;
+  border: 1px solid #dce8e8;
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.db-manage-card.active {
+  border-color: var(--primary-teal);
+  border-left: 4px solid var(--primary-teal);
+  background: #fcfefe;
+}
+
+/* 分類管理標籤群 */
+.db-cat-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.db-cat-chip {
+  background: #edf5fb;
+  color: #19538c;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #d4e4f5;
+}
+
+.remove-cat-btn {
+  cursor: pointer;
+  font-size: 10px;
+  color: #c62828;
+  padding: 0 2px;
+}
+
+.remove-cat-btn:hover {
+  font-weight: 900;
+}
+
+.add-cat-btn {
+  background: transparent;
+  border: 1px dashed var(--primary-teal);
+  color: var(--primary-teal);
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.add-cat-btn:hover {
+  background: #eef8f8;
+}
+
+/* 彈窗 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-card {
+  background: #ffffff;
+  border-radius: 14px;
+  max-width: 400px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f7fafb;
+}
+
+.modal-header h3 { font-size: 15px; font-weight: 700; }
+.modal-close-btn { background: transparent; border: none; font-size: 18px; cursor: pointer; }
+.modal-body { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.form-group { display: flex; flex-direction: column; gap: 3px; }
+.form-group label { font-size: 12.5px; font-weight: 700; color: var(--text-dark); }
+.form-control { padding: 7px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 13px; outline: none; }
+.form-control:focus { border-color: var(--primary-teal); }
+.modal-footer { padding: 10px 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 6px; }
+.btn-primary { background: var(--primary-teal); color: #ffffff; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 12.5px; }
+.btn-outline { background: #ffffff; border: 1px solid var(--primary-teal); color: var(--primary-teal); padding: 5px 10px; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 12.5px; }
+
+/* Toast */
+.toast-container { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); z-index: 500; width: 85%; }
+.toast { background: #16363a; color: #ffffff; padding: 8px 12px; border-radius: 6px; font-size: 12.5px; font-weight: 600; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); animation: fadeIn 0.2s; margin-bottom: 5px; }
+.toast.success { background: var(--primary-teal); }
+.toast.error { background: #c62828; }
+
+/* 在真手機上自動全螢幕適配 */
+@media (max-width: 480px) {
+  body {
+    padding: 0;
+    background: #ffffff;
+  }
+  .phone-frame {
+    max-width: 100vw;
+    height: 100%;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    background: transparent;
+  }
+  .phone-island {
+    display: none;
+  }
+  .phone-screen {
+    border-radius: 0;
+  }
+  .phone-status-bar {
+    display: none;
+  }
+}

@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>雙和醫院 智慧諮詢服務 - QR Code 立牌與海報</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <script src="js/qrcode.min.js"></script>
+
+  <style>
+    :root {
+      --primary-teal: #026873;
+      --primary-dark: #01434b;
+      --accent-blue: #19538c;
+      --text-dark: #1b2e2b;
+      --text-muted: #536b67;
+      --bg-gradient: linear-gradient(135deg, #026873 0%, #01434b 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Noto Sans TC", "DM Sans", -apple-system, sans-serif;
+      background: #eef4f5;
+      color: var(--text-dark);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+      min-height: 100vh;
+    }
+
+    /* 頂部操作控制列 (列印時隱藏) */
+    .control-toolbar {
+      background: #ffffff;
+      border: 1px solid #d2e4e6;
+      border-radius: 14px;
+      padding: 16px 20px;
+      max-width: 640px;
+      width: 100%;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .toolbar-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--primary-teal);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .notice-box {
+      background: #fff8e6;
+      border-left: 4px solid #f59e0b;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #78350f;
+      line-height: 1.5;
+    }
+
+    .quick-url-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .quick-chip-btn {
+      background: #f0f7f7;
+      border: 1px solid #bce1df;
+      color: var(--primary-teal);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .quick-chip-btn:hover {
+      background: var(--primary-teal);
+      color: #ffffff;
+    }
+
+    .url-input-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .url-input {
+      flex: 1;
+      border: 1px solid #c5dbde;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+    }
+
+    .url-input:focus {
+      border-color: var(--primary-teal);
+      box-shadow: 0 0 0 2px rgba(2, 104, 115, 0.2);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary-teal);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-outline {
+      background: #ffffff;
+      border: 1px solid #bce1df;
+      color: var(--primary-teal);
+    }
+
+    .btn-outline:hover {
+      background: #f0f8f8;
+    }
+
+    /* ================= A4 / A5 立牌海報實體卡片 ================= */
+    .standee-poster-card {
+      background: #ffffff;
+      max-width: 560px;
+      width: 100%;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      border: 1px solid #dce8e8;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 海報頂部品牌形象區 */
+    .poster-header {
+      background: var(--bg-gradient);
+      color: #ffffff;
+      padding: 26px 20px 20px 20px;
+      text-align: center;
+      position: relative;
+    }
+
+    .poster-header::after {
+      content: "";
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 12px solid transparent;
+      border-right: 12px solid transparent;
+      border-top: 10px solid var(--primary-dark);
+    }
+
+    .hospital-badge {
+      font-size: 13px;
+      letter-spacing: 1px;
+      font-weight: 500;
+      opacity: 0.92;
+      margin-bottom: 4px;
+    }
+
+    .poster-title {
+      font-size: 25px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .poster-subtitle {
+      font-size: 13.5px;
+      opacity: 0.9;
+      font-weight: 400;
+      line-height: 1.4;
+    }
+
+    /* 海報主體內容 */
+    .poster-body {
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+    }
+
+    /* QR Code 展示區 */
+    .qrcode-wrapper {
+      background: #ffffff;
+      border: 3px solid var(--primary-teal);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 6px 20px rgba(2, 104, 115, 0.12);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #qrcode-canvas {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-width: 200px;
+      min-height: 200px;
+    }
+
+    #qrcode-canvas img, #qrcode-canvas canvas {
+      display: block;
+      border-radius: 6px;
+    }
+
+    .scan-hint {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: var(--primary-teal);
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .qr-target-url-text {
+      font-size: 11px;
+      color: var(--text-muted);
+      word-break: break-all;
+      text-align: center;
+      max-width: 320px;
+    }
+
+    /* 3 步驟操作說明 */
+    .steps-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      width: 100%;
+    }
+
+    .step-item {
+      background: #f4fafb;
+      border: 1px solid #dcefed;
+      border-radius: 12px;
+      padding: 10px 8px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .step-num {
+      width: 22px;
+      height: 22px;
+      background: var(--primary-teal);
+      color: #ffffff;
+      border-radius: 50%;
+      font-size: 11.5px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .step-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-dark);
+    }
+
+    .step-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
+
+    /* 服務項目亮點標籤 */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      width: 100%;
+    }
+
+    .feature-chip {
+      background: #ffffff;
+      border: 1px solid #dbeef0;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-dark);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* 海報底部資訊 */
+    .poster-footer {
+      background: #f8fbfa;
+      border-top: 1px solid #e1eded;
+      padding: 12px 18px;
+      text-align: center;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .poster-footer strong {
+      color: var(--primary-teal);
+    }
+
+    /* ================= 列印專用樣式 (@media print) ================= */
+    @media print {
+      body {
+        background: #ffffff;
+        padding: 0;
+      }
+
+      .control-toolbar {
+        display: none !important;
+      }
+
+      .standee-poster-card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        max-width: 100%;
+        border-radius: 0;
+      }
+
+      .poster-header {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 🎛️ 頂部操作列 (僅供畫面調整與列印，列印時自動隱藏) -->
+  <div class="control-toolbar">
+    <div class="toolbar-title">
+      <span>📱</span> 雙和醫院 智慧諮詢服務 - QR Code 設定與列印
+    </div>
+
+    <div class="notice-box">
+      ⚠️ <strong>為什麼手機掃碼會連不上？</strong><br>
+      因為手機無法直接讀取您電腦硬碟檔案 (<code>file:///</code>)。<br>
+      手機連線必須透過：<strong>① 區網 IP 網址</strong>（同 Wi-Fi） 或 <strong>② 外網發布網址</strong>（任何手機 4G/5G 隨時可開）！
+    </div>
+
+    <!-- 快速網址選擇按鈕 -->
+    <div style="font-size:12px; font-weight:700; color:var(--text-dark);">
+      點擊切換 QR Code 連線網址：
+    </div>
+    <div class="quick-url-chips">
+      <button class="quick-chip-btn" id="chip-lan-ip">📡 設為本機區網 (http://10.97.1.178:8080)</button>
+      <button class="quick-chip-btn" id="chip-netlify">🌐 設為 Netlify 外網網址範例</button>
+      <button class="quick-chip-btn" id="chip-custom">✏️ 自訂醫院官網網址</button>
+    </div>
+
+    <div class="url-input-group">
+      <input type="text" id="target-url-input" class="url-input" value="http://10.97.1.178:8080" placeholder="請輸入欲讓手機連線的網址..." />
+      <button class="btn btn-outline" id="btn-update-qr">🔄 更新條碼</button>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="window.print()">🖨️ 一鍵列印立牌/海報 (A4/A5)</button>
+      <button class="btn btn-outline" id="btn-download-qr">📥 僅下載 QR Code 圖檔 (PNG)</button>
+      <button class="btn btn-outline" onclick="window.open('index.html', '_blank')">🌐 開啟問答系統首頁</button>
+    </div>
+  </div>
+
+  <!-- 📄 A4 / A5 立牌與海報實體預覽 -->
+  <div class="standee-poster-card" id="print-area">
+    
+    <!-- 頂部 Header -->
+    <div class="poster-header">
+      <div class="hospital-badge">雙和醫院 智慧諮詢服務</div>
+      <h1 class="poster-title">🤖 智能問答助手</h1>
+      <p class="poster-subtitle">手機掃碼即時解答住院須知、探病時間、病房設施與文件申請常見問題</p>
+    </div>
+
+    <!-- 主體內容 -->
+    <div class="poster-body">
+      
+      <!-- QR Code 核心展示區 -->
+      <div class="qrcode-wrapper">
+        <div id="qrcode-canvas"></div>
+        <div class="scan-hint">
+          <span>📷</span> 請使用手機相機掃描 QR Code
+        </div>
+        <div class="qr-target-url-text" id="display-target-url">http://10.97.1.178:8080</div>
+      </div>
+
+      <!-- 3 步驟掃描指引 -->
+      <div class="steps-container">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-title">開啟相機</div>
+          <div class="step-desc">打開手機相機或 LINE 掃描器</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-title">對準條碼</div>
+          <div class="step-desc">對準上方 QR Code 進行掃描</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-title">立即諮詢</div>
+          <div class="step-desc">點擊開啟網頁，即刻解答</div>
+        </div>
+      </div>
+
+      <!-- 支援服務項目 -->
+      <div class="features-grid">
+        <div class="feature-chip"><span>🕒</span> 訪客探病時間與門禁</div>
+        <div class="feature-chip"><span>💰</span> 病房費用與各床等說明</div>
+        <div class="feature-chip"><span>📄</span> 診斷書與病歷申請流程</div>
+        <div class="feature-chip"><span>🛏️</span> 陪病證與陪病家屬規範</div>
+        <div class="feature-chip"><span>🏧</span> 提款機(ATM)與美食街</div>
+        <div class="feature-chip"><span>📶</span> 免費 Wi-Fi 無線上網連線</div>
+      </div>
+
+    </div>
+
+    <!-- 底部聯絡資訊 -->
+    <div class="poster-footer">
+      雙和醫院服務專線：<strong>(02) 2249-0088</strong> ｜ 住院諮詢分機：<strong>2019、2020</strong><br>
+      © 臺北醫學大學．雙和醫院 版權所有
+    </div>
+
+  </div>
+
+  <script>
+    let qrcodeObj = null;
+
+    function initQRCode() {
+      const urlParams = new URLSearchParams(window.location.search);
+      let initialUrl = urlParams.get('url');
+
+      if (!initialUrl) {
+        if (window.location.protocol.startsWith('http') && !window.location.hostname.includes('localhost')) {
+          initialUrl = window.location.origin + window.location.pathname.replace("📱雙和醫院_智能問答QR_Code立牌與海報.html", "index.html");
+        } else {
+          initialUrl = "http://10.97.1.178:8080";
+        }
+      }
+
+      const input = document.getElementById("target-url-input");
+      if (input) {
+        input.value = initialUrl;
+      }
+
+      generateQR(initialUrl);
+
+      // 快速按鈕切換
+      document.getElementById("chip-lan-ip")?.addEventListener("click", () => {
+        setAndGenerate("http://10.97.1.178:8080");
+      });
+
+      document.getElementById("chip-netlify")?.addEventListener("click", () => {
+        const netlifyUrl = prompt("請輸入您在 Netlify 發布後的網址（例如 https://shh-assistant.netlify.app）：", "https://shh-assistant.netlify.app");
+        if (netlifyUrl) {
+          setAndGenerate(netlifyUrl);
+        }
+      });
+
+      document.getElementById("chip-custom")?.addEventListener("click", () => {
+        const customUrl = prompt("請輸入醫院官網或其他外網連線網址：", "https://shh.tmu.edu.tw/qa/");
+        if (customUrl) {
+          setAndGenerate(customUrl);
+        }
+      });
+    }
+
+    function setAndGenerate(url) {
+      const input = document.getElementById("target-url-input");
+      if (input) input.value = url;
+      generateQR(url);
+    }
+
+    function generateQR(text) {
+      const container = document.getElementById("qrcode-canvas");
+      container.innerHTML = "";
+      
+      const displayUrlEl = document.getElementById("display-target-url");
+      if (displayUrlEl) {
+        displayUrlEl.textContent = text;
+      }
+
+      qrcodeObj = new QRCode(container, {
+        text: text,
+        width: 200,
+        height: 200,
+        colorDark: "#026873",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    }
+
+    document.getElementById("btn-update-qr")?.addEventListener("click", () => {
+      const val = document.getElementById("target-url-input").value.trim();
+      if (val) {
+        generateQR(val);
+      }
+    });
+
+    document.getElementById("btn-download-qr")?.addEventListener("click", () => {
+      const img = document.querySelector("#qrcode-canvas img") || document.querySelector("#qrcode-canvas canvas");
+      if (img) {
+        let src = img.src;
+        if (!src && img.toDataURL) {
+          src = img.toDataURL("image/png");
+        }
+        const a = document.createElement("a");
+        a.href = src;
+        a.download = "雙和醫院_智慧諮詢服務_QRCode.png";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } else {
+        alert("QR Code 尚未產生完成，請稍候重試！");
+      }
+    });
+
+    window.addEventListener("DOMContentLoaded", initQRCode);
+  </script>
+</body>
+</html>

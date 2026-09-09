@@ -1,0 +1,8 @@
+﻿scripts/cloudflared.exe
+scripts/gh.exe
+scripts/gh.zip
+scripts/gh_temp/
+.DS_Store
+Thumbs.db
+*.log
+.system_generated/
