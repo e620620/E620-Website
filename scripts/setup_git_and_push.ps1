@@ -1,5 +1,5 @@
-﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$env:Path = "C:\Program Files\Git\cmd;C:\Program Files\Git\bin;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$env:Path = "C:\Users\ireg\AppData\Local\Programs\Git\cmd;C:\Program Files\Git\cmd;C:\Program Files\Git\bin;" + [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 $projectRoot = "C:\Users\ireg\Desktop\智能問答助手-勿刪"
 $scriptDir = Join-Path $projectRoot "scripts"
 $ghExe = Join-Path $scriptDir "gh.exe"
