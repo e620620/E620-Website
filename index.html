@@ -4,6 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>智能問答助手 🏥</title>
+
+  <!-- Google Analytics 4 (GA4) 訪問統計 -->
+  <!-- ⚠️ 請將 G-XXXXXXXXXX 替換為您的 GA4 衡量 ID -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX');
+  </script>
   
   <!-- 字體引入 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -171,6 +181,55 @@
               <div style="display:flex; gap:6px;">
                 <button id="btn-export-stats" class="btn-outline" style="font-size:11.5px; padding:3px 8px;">📥 匯出統計報表</button>
                 <button id="btn-reset-stats" class="btn-outline" style="font-size:11.5px; padding:3px 8px; color:#c62828; border-color:#ffcdd2;">🔄 重設</button>
+              </div>
+            </div>
+
+            <!-- 🌐 Firebase 雲端訪問統計 -->
+            <div id="firebase-visit-stats-block" style="background:linear-gradient(135deg,#e8f5e9,#e3f2fd); border:1px solid #a5d6a7; border-radius:10px; padding:12px;">
+              <div style="font-size:13px; font-weight:800; color:#1b5e20; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                <span>🌐 雲端訪問統計（跨裝置即時）</span>
+                <button id="btn-refresh-firebase-stats" style="font-size:11px; padding:3px 8px; background:#2e7d32; color:#fff; border:none; border-radius:6px; cursor:pointer;">🔄 更新</button>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px;">
+                <div style="background:#fff; border-radius:8px; padding:8px 10px; border:1px solid #c8e6c9;">
+                  <div style="font-size:10.5px; color:#388e3c;">📅 今日訪問</div>
+                  <div id="fb-stat-today" style="font-size:22px; font-weight:800; color:#2e7d32;">—</div>
+                </div>
+                <div style="background:#fff; border-radius:8px; padding:8px 10px; border:1px solid #c8e6c9;">
+                  <div style="font-size:10.5px; color:#388e3c;">📊 累計訪問</div>
+                  <div id="fb-stat-total" style="font-size:22px; font-weight:800; color:#2e7d32;">—</div>
+                </div>
+                <div style="background:#fff; border-radius:8px; padding:8px 10px; border:1px solid #bbdefb;">
+                  <div style="font-size:10.5px; color:#1565c0;">📱 手機訪問</div>
+                  <div id="fb-stat-mobile" style="font-size:22px; font-weight:800; color:#1976d2;">—</div>
+                </div>
+                <div style="background:#fff; border-radius:8px; padding:8px 10px; border:1px solid #bbdefb;">
+                  <div style="font-size:10.5px; color:#1565c0;">🖥️ 電腦訪問</div>
+                  <div id="fb-stat-desktop" style="font-size:22px; font-weight:800; color:#1976d2;">—</div>
+                </div>
+              </div>
+              <div id="firebase-stats-status" style="font-size:10px; color:#666; margin-top:6px; text-align:right;">尚未連線 Firebase</div>
+            </div>
+
+            <!-- 📊 Firebase 問題件數排行 -->
+            <div id="firebase-question-stats-block" style="background:#fff; border:1px solid #e1eded; border-radius:10px; padding:12px; display:none;">
+              <div style="font-size:13px; font-weight:800; color:var(--text-dark); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                <span>📊 各問題提問件數排行（即時）</span>
+                <span id="fb-question-total-badge" style="font-size:11px; background:#e8f5e9; color:#2e7d32; padding:2px 8px; border-radius:10px; font-weight:700;"></span>
+              </div>
+              <div id="firebase-question-table-container" style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                  <thead>
+                    <tr style="background:#f4fafb; color:var(--text-muted);">
+                      <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e1eded;">#</th>
+                      <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e1eded;">問題關鍵字</th>
+                      <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e1eded;">件數</th>
+                      <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e1eded;">命中率</th>
+                      <th style="text-align:right; padding:6px 8px; border-bottom:1px solid #e1eded;">最後提問</th>
+                    </tr>
+                  </thead>
+                  <tbody id="firebase-question-tbody"></tbody>
+                </table>
               </div>
             </div>
 
@@ -443,6 +502,11 @@
   </div>
 
   <!-- 載入腳本 (優先載入 database/ 資料夾內的資料庫) -->
+  <!-- Firebase Compat SDK (Realtime Database) -->
+  <!-- ⚠️ 設定 Firebase 後此 SDK 即生效，未設定時 tracker.js 會優雅降級不影響使用 -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="js/tracker.js"></script>
   <script src="database/databases.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/app.js"></script>

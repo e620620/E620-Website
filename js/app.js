@@ -15,6 +15,8 @@ class ChatAssistantApp {
     this.bindHeaderDbSelector();
     this.bindQrCodeModal();
     this.onDatabaseSwitched();
+    // 記錄訪問（Firebase + GA4）
+    if (window.Tracker) window.Tracker.recordVisit();
   }
 
   // 當資料庫切換或內容更新時觸發
@@ -322,6 +324,11 @@ class ChatAssistantApp {
 
     if (window.adminMgr && typeof window.adminMgr.recordQuery === "function") {
       window.adminMgr.recordQuery(query, matchResult.bestItem);
+    }
+
+    // 記錄提問到 Firebase + GA4
+    if (window.Tracker) {
+      window.Tracker.recordQuestion(query, !!matchResult.bestItem, matchResult.bestItem || null);
     }
 
     if (matchResult.bestItem) {

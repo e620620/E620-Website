@@ -1187,7 +1187,7 @@ class DatabaseManager {
         if (tab === "db") this.renderDatabaseList();
         if (tab === "kb") this.renderActiveDbContent();
         if (tab === "tags") this.renderTagsCloud();
-        if (tab === "stats") this.renderStats();
+        if (tab === "stats") { this.renderStats(); this.refreshFirebaseStats(); }
       });
     });
 
@@ -1272,6 +1272,7 @@ class DatabaseManager {
     document.getElementById("btn-import-json-open")?.addEventListener("click", () => document.getElementById("json-modal")?.classList.add("active"));
     document.getElementById("btn-export-stats")?.addEventListener("click", () => this.exportStatsReport());
     document.getElementById("btn-reset-stats")?.addEventListener("click", () => this.resetStatsData());
+    document.getElementById("btn-refresh-firebase-stats")?.addEventListener("click", () => this.refreshFirebaseStats());
 
     // Excel 匯入
     const excelBtn = document.getElementById("btn-import-excel");
@@ -1335,6 +1336,75 @@ class DatabaseManager {
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
   }
+
+  // 刷新 Firebase 統計（訪問數 + 問題件數排行）
+  async refreshFirebaseStats() {
+    const statusEl = document.getElementById("firebase-stats-status");
+    const questionBlock = document.getElementById("firebase-question-stats-block");
+
+
+    if (!window.Tracker) {
+      if (statusEl) statusEl.textContent = "⚠️ tracker.js 尚未載入";
+      return;
+    }
+
+    if (statusEl) statusEl.textContent = "🔄 連線 Firebase 中...";
+
+    // 讀取訪問統計
+    const visitStats = await window.Tracker.getVisitStats();
+    const todayEl = document.getElementById("fb-stat-today");
+    const totalEl = document.getElementById("fb-stat-total");
+    const mobileEl = document.getElementById("fb-stat-mobile");
+    const desktopEl = document.getElementById("fb-stat-desktop");
+
+    if (visitStats.total === 0 && visitStats.today === 0 && visitStats.mobile === 0) {
+      // 可能尚未設定 Firebase 或無資料
+      if (statusEl) statusEl.textContent = "⚠️ 尚未設定 Firebase 或無訪問資料";
+    } else {
+      if (todayEl) todayEl.textContent = visitStats.today;
+      if (totalEl) totalEl.textContent = visitStats.total;
+      if (mobileEl) mobileEl.textContent = visitStats.mobile;
+      if (desktopEl) desktopEl.textContent = visitStats.desktop;
+      const now = new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
+      if (statusEl) statusEl.textContent = `✅ 已同步（${now}）`;
+    }
+
+    // 讀取問題件數統計
+    const questionStats = await window.Tracker.getQuestionStats();
+    if (questionStats.length > 0 && questionBlock) {
+      questionBlock.style.display = "block";
+
+      const badge = document.getElementById("fb-question-total-badge");
+      const totalQuestions = questionStats.reduce((sum, q) => sum + (q.count || 0), 0);
+      if (badge) badge.textContent = `共 ${totalQuestions} 次提問`;
+
+      const tbody = document.getElementById("firebase-question-tbody");
+      if (tbody) {
+        tbody.innerHTML = questionStats.slice(0, 50).map((q, i) => {
+          const hitRate = q.count > 0
+            ? Math.round(((q.matched || 0) / q.count) * 100)
+            : 0;
+          const lastAsked = q.lastAsked
+            ? new Date(q.lastAsked).toLocaleDateString("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+            : "—";
+          const rankColor = i === 0 ? "#e65100" : i === 1 ? "#ad1457" : i === 2 ? "#1565c0" : "var(--text-muted)";
+          const rankBg = i < 3 ? "#fff8e1" : "transparent";
+          return `
+            <tr style="border-bottom:1px solid #f0f0f0; background:${rankBg};">
+              <td style="padding:6px 8px; font-weight:800; color:${rankColor};">${i < 3 ? ["🥇","🥈","🥉"][i] : i + 1}</td>
+              <td style="padding:6px 8px; font-weight:600; color:var(--text-dark); max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${this.escapeHtml(q.question || q.key)}</td>
+              <td style="padding:6px 8px; text-align:center; font-weight:800; color:var(--primary-teal); font-size:14px;">${q.count}</td>
+              <td style="padding:6px 8px; text-align:center;">
+                <span style="background:${hitRate >= 80 ? "#e8f5e9" : hitRate >= 50 ? "#fff8e1" : "#ffebee"}; color:${hitRate >= 80 ? "#2e7d32" : hitRate >= 50 ? "#e65100" : "#c62828"}; padding:2px 6px; border-radius:6px; font-weight:700; font-size:11px;">${hitRate}%</span>
+              </td>
+              <td style="padding:6px 8px; text-align:right; font-size:11px; color:var(--text-muted);">${lastAsked}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+    }
+  }
+
 }
 
 // 實例化
