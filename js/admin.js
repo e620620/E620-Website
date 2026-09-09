@@ -1174,8 +1174,16 @@ class DatabaseManager {
     // 後台分頁切換
     document.querySelectorAll(".admin-tab-btn").forEach(btn => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".admin-tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".admin-tab-btn").forEach(b => {
+          b.classList.remove("active");
+          b.style.background = "#f0f6f7";
+          b.style.color = "#333";
+          b.style.borderColor = "#c0d6d8";
+        });
         btn.classList.add("active");
+        btn.style.background = "#026873";
+        btn.style.color = "#ffffff";
+        btn.style.borderColor = "#026873";
         const tab = btn.dataset.tab;
         
         document.getElementById("tab-db-panel").style.display = tab === "db" ? "flex" : "none";
