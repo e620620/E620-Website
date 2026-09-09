@@ -142,6 +142,23 @@ const Tracker = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updated)
       }).catch(err => console.warn("[Tracker] recordQuestion update error:", err));
+
+      // 3. 另外寫入原始流水帳紀錄 (/query_logs.json)，儲存每一位民眾問的確切文字
+      const logPayload = {
+        time: new Date().toISOString(),
+        raw_query: trimmed,
+        matched: !!matched,
+        matched_question: matchedItem ? (matchedItem.question || "") : "",
+        matched_category: matchedItem ? (matchedItem.category || "") : "",
+        device: _detectDevice()
+      };
+
+      fetch(`${_getBaseUrl()}/query_logs.json`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(logPayload)
+      }).catch(err => console.warn("[Tracker] query_logs push error:", err));
+
     } catch (e) {
       console.warn("[Tracker] recordQuestion exception:", e.message);
     }
@@ -199,6 +216,31 @@ const Tracker = {
     } catch (e) {
       console.warn("[Tracker] getVisitStats failed:", e.message);
       return { total: 0, today: 0, mobile: 0, desktop: 0 };
+    }
+  },
+
+  /**
+   * 讀取全體民眾歷史原始提問流水帳清單 (依時間倒序)
+   */
+  async getQueryLogs() {
+    if (!_isValidDbUrl()) return [];
+
+    try {
+      const res = await fetch(`${_getBaseUrl()}/query_logs.json`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!data) return [];
+
+      const list = Object.keys(data).map(k => ({
+        id: k,
+        ...data[k]
+      }));
+
+      // 依照提問時間倒序排列（最新提問在最上面）
+      return list.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
+    } catch (e) {
+      console.warn("[Tracker] getQueryLogs failed:", e.message);
+      return [];
     }
   }
 };

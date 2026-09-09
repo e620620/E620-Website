@@ -1017,52 +1017,120 @@ class DatabaseManager {
   }
 
   // 匯出問題使用率與效能分析報表 (CSV 格式)
-  exportStatsReport() {
+  async exportStatsReport() {
+    this.showToast("⏳ 正在從雲端抓取全體民眾提問數據...", "info");
+
+    let cloudLogs = [];
+    let cloudQuestions = [];
+    let cloudVisits = { total: 0, today: 0, mobile: 0, desktop: 0 };
+
+    if (window.Tracker) {
+      try {
+        [cloudLogs, cloudQuestions, cloudVisits] = await Promise.all([
+          window.Tracker.getQueryLogs(),
+          window.Tracker.getQuestionStats(),
+          window.Tracker.getVisitStats()
+        ]);
+      } catch (e) {
+        console.warn("讀取雲端統計失敗，將使用本地備份:", e);
+      }
+    }
+
     const db = this.getActiveDatabase();
-    const total = this.statsData.totalQueries || 0;
-    const matched = this.statsData.matchedQueries || 0;
-    const unmatched = this.statsData.unmatchedQueries || 0;
-    const matchRate = total > 0 ? Math.round((matched / total) * 100) : 0;
-    
-    let csv = "\uFEFF"; // UTF-8 BOM
-    csv += "【智能問答系統 - 問題使用率與效能分析報告】\n";
-    csv += `報告產生時間,${new Date().toLocaleString()}\n`;
+    const totalQueries = cloudLogs.length > 0 
+      ? cloudLogs.length 
+      : (this.statsData.totalQueries || 0);
+    const matchedCount = cloudLogs.length > 0 
+      ? cloudLogs.filter(l => l.matched).length 
+      : (this.statsData.matchedQueries || 0);
+    const unmatchedCount = totalQueries - matchedCount;
+    const matchRate = totalQueries > 0 ? Math.round((matchedCount / totalQueries) * 100) : 0;
+
+    let csv = "\uFEFF"; // UTF-8 BOM 確保繁體中文 Excel 完全不亂碼
+    csv += "【雙和醫院 智能問答系統 - 全體民眾提問與效能分析報告】\n";
+    csv += `報表匯出時間,${new Date().toLocaleString()}\n`;
     csv += `當前資料庫,${db.name}\n`;
-    csv += `總提問次數,${total}\n`;
-    csv += `成功回答次數,${matched}\n`;
-    csv += `成功解答率 (效能),${matchRate}%\n`;
-    csv += `未命中次數,${unmatched}\n\n`;
+    csv += `累計造訪總人次,${cloudVisits.total || 0} (手機: ${cloudVisits.mobile || 0} / 電腦: ${cloudVisits.desktop || 0})\n`;
+    csv += `總提問件數,${totalQueries}\n`;
+    csv += `成功回答次數,${matchedCount}\n`;
+    csv += `成功解答率 (命中率),${matchRate}%\n`;
+    csv += `未命中待補強次數,${unmatchedCount}\n\n`;
 
-    csv += "【熱門問題使用率排行榜 (Top Asked Questions)】\n";
-    csv += "排名,問題名稱,所屬分類,提問次數,使用率佔比,最後提問時間\n";
-    const qList = Object.values(this.statsData.questionHits || {});
-    qList.sort((a, b) => b.count - a.count);
-    qList.forEach((q, idx) => {
-      const share = total > 0 ? Math.round((q.count / total) * 100) : 0;
-      csv += `${idx + 1},"${(q.question || "").replace(/"/g, '""')}","${q.category || ""}",${q.count},${share}%,"${q.lastAsked || ""}"\n`;
-    });
+    // 🌟 第一核心：全體民眾原始提問流水帳明細（字字句句完整還原）
+    csv += "====================================================\n";
+    csv += "【一、全體民眾原始提問明細流水帳 (病患實際輸入之原始問題)】\n";
+    csv += "====================================================\n";
+    csv += "序號,提問時間,病人原始輸入問題,是否命中解答,系統回覆之標準問題,所屬分類,使用裝置\n";
 
-    csv += "\n【分類諮詢熱度分佈】\n";
-    csv += "分類名稱,諮詢次數,佔比\n";
-    Object.entries(this.statsData.categoryHits || {}).forEach(([cat, count]) => {
-      const share = total > 0 ? Math.round((count / total) * 100) : 0;
-      csv += `"${cat}",${count},${share}%\n`;
-    });
+    if (cloudLogs.length > 0) {
+      cloudLogs.forEach((log, idx) => {
+        const timeStr = log.time ? new Date(log.time).toLocaleString() : "剛才";
+        const rawQuery = (log.raw_query || log.question || "").replace(/"/g, '""');
+        const matchedStr = log.matched ? "✅ 命中" : "⚠️ 未命中";
+        const standardQ = (log.matched_question || "").replace(/"/g, '""');
+        const category = (log.matched_category || "").replace(/"/g, '""');
+        const device = log.device === "mobile" ? "手機" : "電腦";
+        csv += `${idx + 1},"${timeStr}","${rawQuery}","${matchedStr}","${standardQ}","${category}","${device}"\n`;
+      });
+    } else {
+      // 備援讀取本地近期 log
+      const localLogs = this.statsData.recentLog || [];
+      if (localLogs.length > 0) {
+        localLogs.forEach((log, idx) => {
+          csv += `${idx + 1},"${log.time || ""}","${(log.query || "").replace(/"/g, '""')}","${log.matched ? "✅ 命中" : "⚠️ 未命中"}","${(log.matchedTitle || "").replace(/"/g, '""')}","",""\n`;
+        });
+      } else {
+        csv += "1,暫無紀錄,目前尚無民眾提問紀錄,,,,,\n";
+      }
+    }
 
-    csv += "\n【未命中待補強問題清單】\n";
-    csv += "關鍵字,未命中次數,最後提問時間\n";
-    (this.statsData.unmatchedList || []).forEach(u => {
-      csv += `"${(u.query || "").replace(/"/g, '""')}",${u.count},"${u.lastAsked || ""}"\n`;
-    });
+    // 🌟 第二核心：熱門問題提問件數排行榜
+    csv += "\n====================================================\n";
+    csv += "【二、熱門問題提問件數排行榜 (Top Asked Questions)】\n";
+    csv += "====================================================\n";
+    csv += "排名,問題名稱,累計提問件數,解答成功次數,命中率,最後提問時間\n";
+
+    if (cloudQuestions.length > 0) {
+      cloudQuestions.forEach((q, idx) => {
+        const hitRate = q.count > 0 ? Math.round(((q.matched || 0) / q.count) * 100) : 0;
+        const lastAsked = q.lastAsked ? new Date(q.lastAsked).toLocaleString() : "";
+        csv += `${idx + 1},"${(q.question || q.key || "").replace(/"/g, '""')}",${q.count},${q.matched || 0},${hitRate}%,"${lastAsked}"\n`;
+      });
+    } else {
+      const qList = Object.values(this.statsData.questionHits || {});
+      qList.sort((a, b) => b.count - a.count);
+      qList.forEach((q, idx) => {
+        const share = totalQueries > 0 ? Math.round((q.count / totalQueries) * 100) : 0;
+        csv += `${idx + 1},"${(q.question || "").replace(/"/g, '""')}",${q.count},,${share}%,"${q.lastAsked || ""}"\n`;
+      });
+    }
+
+    // 🌟 第三核心：未命中或待補強題目清單
+    csv += "\n====================================================\n";
+    csv += "【三、病患常問但「未命中」待補強之關鍵字清單】\n";
+    csv += "====================================================\n";
+    csv += "未命中之問題/關鍵字,提問時間\n";
+
+    const unmatchedLogs = cloudLogs.filter(l => !l.matched);
+    if (unmatchedLogs.length > 0) {
+      unmatchedLogs.forEach(u => {
+        const timeStr = u.time ? new Date(u.time).toLocaleString() : "";
+        csv += `"${(u.raw_query || "").replace(/"/g, '""')}","${timeStr}"\n`;
+      });
+    } else {
+      (this.statsData.unmatchedList || []).forEach(u => {
+        csv += `"${(u.query || "").replace(/"/g, '""')}","${u.lastAsked || ""}"\n`;
+      });
+    }
 
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `問題使用率與效能分析報表_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `雙和醫院_智能問答提問分析報告_${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
-    this.showToast("📊 問題使用率統計報表已成功下載！", "success");
+    this.showToast("📊 全體民眾提問分析報告（含原始問題）已成功下載！", "success");
   }
 
   // 重設統計數據
@@ -1410,6 +1478,31 @@ class DatabaseManager {
           `;
         }).join("");
       }
+    }
+
+    // 讀取全體民眾最新原始提問流水帳並更新畫面
+    const rawLogs = await window.Tracker.getQueryLogs();
+    const recentContainer = document.getElementById("stat-recent-activity-container");
+    if (recentContainer && rawLogs.length > 0) {
+      recentContainer.innerHTML = rawLogs.slice(0, 30).map(l => {
+        const timeStr = l.time ? new Date(l.time).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" }) : "剛才";
+        const isMatched = l.matched;
+        return `
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:6px 9px; background:#ffffff; border-radius:6px; border-left:3.5px solid ${isMatched ? "#026873" : "#d97706"}; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:5px;">
+            <div style="display:flex; flex-direction:column; gap:2px; overflow:hidden; flex:1; margin-right:8px;">
+              <div style="display:flex; align-items:center; gap:5px;">
+                <span style="font-size:10px; color:#888; font-family:monospace;">${timeStr}</span>
+                <span style="font-size:10px; background:#eef4f5; padding:1px 4px; border-radius:3px; color:#555;">${l.device === "mobile" ? "📱 手機" : "🖥️ 電腦"}</span>
+              </div>
+              <span style="font-weight:700; color:#1a202c; word-break:break-all;">「${this.escapeHtml(l.raw_query || l.question || "")}」</span>
+              <span style="font-size:11px; color:${isMatched ? "#026873" : "#d97706"};">➔ ${isMatched ? this.escapeHtml(l.matched_question || "已解答") : "題庫無相符解答 (待補充)"}</span>
+            </div>
+            <span style="font-size:10px; padding:2px 6px; border-radius:4px; font-weight:700; background:${isMatched ? "#e6f4ea; color:#137333" : "#fef7e0; color:#b06000"}; flex-shrink:0;">
+              ${isMatched ? "✅ 命中" : "⚠️ 未命中"}
+            </span>
+          </div>
+        `;
+      }).join("");
     }
   }
 
