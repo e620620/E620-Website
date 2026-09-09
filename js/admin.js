@@ -1046,91 +1046,121 @@ class DatabaseManager {
     const unmatchedCount = totalQueries - matchedCount;
     const matchRate = totalQueries > 0 ? Math.round((matchedCount / totalQueries) * 100) : 0;
 
-    let csv = "\uFEFF"; // UTF-8 BOM 確保繁體中文 Excel 完全不亂碼
-    csv += "【雙和醫院 智能問答系統 - 全體民眾提問與效能分析報告】\n";
-    csv += `報表匯出時間,${new Date().toLocaleString()}\n`;
-    csv += `當前資料庫,${db.name}\n`;
-    csv += `累計造訪總人次,${cloudVisits.total || 0} (手機: ${cloudVisits.mobile || 0} / 電腦: ${cloudVisits.desktop || 0})\n`;
-    csv += `總提問件數,${totalQueries}\n`;
-    csv += `成功回答次數,${matchedCount}\n`;
-    csv += `成功解答率 (命中率),${matchRate}%\n`;
-    csv += `未命中待補強次數,${unmatchedCount}\n\n`;
+    // 檢查是否有 SheetJS 支援 (index.html 中已引入 xlsx.full.min.js)
+    if (typeof XLSX === "undefined") {
+      this.showToast("⚠️ 未偵測到 Excel 模組，請稍後重試！", "error");
+      return;
+    }
 
-    // 🌟 第一核心：全體民眾原始提問流水帳明細（字字句句完整還原）
-    csv += "====================================================\n";
-    csv += "【一、全體民眾原始提問明細流水帳 (病患實際輸入之原始問題)】\n";
-    csv += "====================================================\n";
-    csv += "序號,提問時間,病人原始輸入問題,是否命中解答,系統回覆之標準問題,所屬分類,使用裝置\n";
+    const wb = XLSX.utils.book_new();
+
+    // ────────────────────────────────────────────────────────────
+    // 📑 工作表 1: 【民眾原始提問流水帳】 (最重要的病患真實問題)
+    // ────────────────────────────────────────────────────────────
+    const sheet1Data = [
+      ["序號", "提問時間", "病人打的原始問題", "是否命中解答", "系統回答問題", "所屬分類", "使用裝置"]
+    ];
 
     if (cloudLogs.length > 0) {
       cloudLogs.forEach((log, idx) => {
         const timeStr = log.time ? new Date(log.time).toLocaleString() : "剛才";
-        const rawQuery = (log.raw_query || log.question || "").replace(/"/g, '""');
+        const rawQuery = log.raw_query || log.question || "";
         const matchedStr = log.matched ? "✅ 命中" : "⚠️ 未命中";
-        const standardQ = (log.matched_question || "").replace(/"/g, '""');
-        const category = (log.matched_category || "").replace(/"/g, '""');
-        const device = log.device === "mobile" ? "手機" : "電腦";
-        csv += `${idx + 1},"${timeStr}","${rawQuery}","${matchedStr}","${standardQ}","${category}","${device}"\n`;
+        const standardQ = log.matched_question || (log.matched ? "已解答" : "無相符解答");
+        const category = log.matched_category || "";
+        const device = log.device === "mobile" ? "📱 手機" : "🖥️ 電腦";
+        sheet1Data.push([idx + 1, timeStr, rawQuery, matchedStr, standardQ, category, device]);
       });
     } else {
-      // 備援讀取本地近期 log
       const localLogs = this.statsData.recentLog || [];
       if (localLogs.length > 0) {
         localLogs.forEach((log, idx) => {
-          csv += `${idx + 1},"${log.time || ""}","${(log.query || "").replace(/"/g, '""')}","${log.matched ? "✅ 命中" : "⚠️ 未命中"}","${(log.matchedTitle || "").replace(/"/g, '""')}","",""\n`;
+          sheet1Data.push([idx + 1, log.time || "", log.query || "", log.matched ? "✅ 命中" : "⚠️ 未命中", log.matchedTitle || "", "", ""]);
         });
       } else {
-        csv += "1,暫無紀錄,目前尚無民眾提問紀錄,,,,,\n";
+        sheet1Data.push([1, "尚無紀錄", "目前尚無民眾提問資料", "", "", "", ""]);
       }
     }
 
-    // 🌟 第二核心：熱門問題提問件數排行榜
-    csv += "\n====================================================\n";
-    csv += "【二、熱門問題提問件數排行榜 (Top Asked Questions)】\n";
-    csv += "====================================================\n";
-    csv += "排名,問題名稱,累計提問件數,解答成功次數,命中率,最後提問時間\n";
+    const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+    // 設定欄寬 (避免文字擠在一起)
+    ws1['!cols'] = [
+      { wch: 8 },  // 序號
+      { wch: 22 }, // 提問時間
+      { wch: 38 }, // 病人打的原始問題 (拉寬方便閱讀)
+      { wch: 14 }, // 是否命中解答
+      { wch: 32 }, // 系統回答問題
+      { wch: 16 }, // 所屬分類
+      { wch: 12 }  // 使用裝置
+    ];
+    XLSX.utils.book_append_sheet(wb, ws1, "📋 民眾原始提問明細");
+
+    // ────────────────────────────────────────────────────────────
+    // 📊 工作表 2: 【熱門問題排行統計】
+    // ────────────────────────────────────────────────────────────
+    const sheet2Data = [
+      ["排名", "問題名稱", "累計提問件數", "解答成功次數", "命中率", "最後提問時間"]
+    ];
 
     if (cloudQuestions.length > 0) {
       cloudQuestions.forEach((q, idx) => {
-        const hitRate = q.count > 0 ? Math.round(((q.matched || 0) / q.count) * 100) : 0;
+        const hitRate = q.count > 0 ? `${Math.round(((q.matched || 0) / q.count) * 100)}%` : "0%";
         const lastAsked = q.lastAsked ? new Date(q.lastAsked).toLocaleString() : "";
-        csv += `${idx + 1},"${(q.question || q.key || "").replace(/"/g, '""')}",${q.count},${q.matched || 0},${hitRate}%,"${lastAsked}"\n`;
+        sheet2Data.push([idx + 1, q.question || q.key || "", q.count, q.matched || 0, hitRate, lastAsked]);
       });
     } else {
       const qList = Object.values(this.statsData.questionHits || {});
       qList.sort((a, b) => b.count - a.count);
       qList.forEach((q, idx) => {
-        const share = totalQueries > 0 ? Math.round((q.count / totalQueries) * 100) : 0;
-        csv += `${idx + 1},"${(q.question || "").replace(/"/g, '""')}",${q.count},,${share}%,"${q.lastAsked || ""}"\n`;
+        const share = totalQueries > 0 ? `${Math.round((q.count / totalQueries) * 100)}%` : "0%";
+        sheet2Data.push([idx + 1, q.question || "", q.count, "", share, q.lastAsked || ""]);
       });
     }
 
-    // 🌟 第三核心：未命中或待補強題目清單
-    csv += "\n====================================================\n";
-    csv += "【三、病患常問但「未命中」待補強之關鍵字清單】\n";
-    csv += "====================================================\n";
-    csv += "未命中之問題/關鍵字,提問時間\n";
+    const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+    ws2['!cols'] = [
+      { wch: 8 },  // 排名
+      { wch: 36 }, // 問題名稱
+      { wch: 14 }, // 累計提問件數
+      { wch: 14 }, // 解答成功次數
+      { wch: 12 }, // 命中率
+      { wch: 22 }  // 最後提問時間
+    ];
+    XLSX.utils.book_append_sheet(wb, ws2, "📊 熱門問題排行榜");
+
+    // ────────────────────────────────────────────────────────────
+    // 🔍 工作表 3: 【未命中待補強清單】
+    // ────────────────────────────────────────────────────────────
+    const sheet3Data = [
+      ["序號", "未命中之原始提問", "提問時間", "使用裝置"]
+    ];
 
     const unmatchedLogs = cloudLogs.filter(l => !l.matched);
     if (unmatchedLogs.length > 0) {
-      unmatchedLogs.forEach(u => {
+      unmatchedLogs.forEach((u, idx) => {
         const timeStr = u.time ? new Date(u.time).toLocaleString() : "";
-        csv += `"${(u.raw_query || "").replace(/"/g, '""')}","${timeStr}"\n`;
+        const device = u.device === "mobile" ? "📱 手機" : "🖥️ 電腦";
+        sheet3Data.push([idx + 1, u.raw_query || "", timeStr, device]);
       });
     } else {
-      (this.statsData.unmatchedList || []).forEach(u => {
-        csv += `"${(u.query || "").replace(/"/g, '""')}","${u.lastAsked || ""}"\n`;
+      (this.statsData.unmatchedList || []).forEach((u, idx) => {
+        sheet3Data.push([idx + 1, u.query || "", u.lastAsked || "", ""]);
       });
     }
 
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `雙和醫院_智能問答提問分析報告_${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    this.showToast("📊 全體民眾提問分析報告（含原始問題）已成功下載！", "success");
+    const ws3 = XLSX.utils.aoa_to_sheet(sheet3Data);
+    ws3['!cols'] = [
+      { wch: 8 },  // 序號
+      { wch: 40 }, // 未命中之原始提問
+      { wch: 22 }, // 提問時間
+      { wch: 12 }  // 使用裝置
+    ];
+    XLSX.utils.book_append_sheet(wb, ws3, "⚠️ 待補強問題清單");
+
+    // 儲存為真正的 .xlsx 檔案
+    const fileName = `雙和醫院_智能問答分析報表_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    this.showToast("📊 乾淨分頁 Excel 報表已成功下載！", "success");
   }
 
   // 重設統計數據
